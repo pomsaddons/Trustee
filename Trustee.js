@@ -5,6 +5,7 @@
 // @description  Add a copy button to the profile header to copy the Roblox profile URL
 // @match        https://www.roblox.com/users/*/profile*
 // @grant        none
+// @require      https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js
 // ==/UserScript==
 
 (function () {
@@ -95,28 +96,102 @@
         }, 1800);
     }
 
-    function copyTextToClipboard(text) {
-        if (navigator.clipboard && navigator.clipboard.writeText) {
-            return navigator.clipboard.writeText(text);
+    function showQrModal(url) {
+        // Remove existing if any
+        const existing = document.getElementById('roseal-qr-modal');
+        if (existing) existing.remove();
+
+        const overlay = document.createElement('div');
+        overlay.id = 'roseal-qr-modal';
+        Object.assign(overlay.style, {
+            position: 'fixed',
+            top: '0',
+            left: '0',
+            width: '100%',
+            height: '100%',
+            backgroundColor: 'rgba(0, 0, 0, 0.6)',
+            zIndex: '999999',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            backdropFilter: 'blur(2px)'
+        });
+
+        const modal = document.createElement('div');
+        const isDark = document.body.classList.contains('dark-theme');
+        Object.assign(modal.style, {
+            backgroundColor: isDark ? '#232527' : '#FFFFFF',
+            color: isDark ? '#FFFFFF' : '#191919',
+            padding: '24px',
+            borderRadius: '12px',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.2)',
+            textAlign: 'center',
+            maxWidth: '300px',
+            position: 'relative',
+            fontFamily: '"HCo Gotham SSm", "Helvetica Neue", Helvetica, Arial, "Lucida Grande", sans-serif'
+        });
+
+        // Close button
+        const closeBtn = document.createElement('button');
+        closeBtn.innerHTML = '&times;';
+        Object.assign(closeBtn.style, {
+            position: 'absolute',
+            top: '8px',
+            right: '12px',
+            background: 'none',
+            border: 'none',
+            fontSize: '24px',
+            cursor: 'pointer',
+            color: 'inherit',
+            opacity: '0.7'
+        });
+        closeBtn.onclick = () => overlay.remove();
+        modal.appendChild(closeBtn);
+
+        // QR Container
+        const qrContainer = document.createElement('div');
+        Object.assign(qrContainer.style, {
+            margin: '16px auto',
+            padding: '10px',
+            backgroundColor: 'white', // QR codes need contrast
+            borderRadius: '8px',
+            width: 'fit-content'
+        });
+        modal.appendChild(qrContainer);
+
+        // Generate QR
+        // Using qrcode.js from @require
+        try {
+            new QRCode(qrContainer, {
+                text: url,
+                width: 180,
+                height: 180,
+                colorDark : "#000000",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.H
+            });
+        } catch (e) {
+            qrContainer.textContent = 'Error generating QR code. Please ensure script dependencies are loaded.';
+            console.error(e);
         }
 
-        // Fallback for older pages
-        return new Promise((resolve, reject) => {
-            const textarea = document.createElement('textarea');
-            textarea.value = text;
-            textarea.style.position = 'fixed';
-            textarea.style.left = '-9999px';
-            document.body.appendChild(textarea);
-            textarea.select();
-            try {
-                const ok = document.execCommand('copy');
-                document.body.removeChild(textarea);
-                if (ok) resolve();
-                else reject(new Error('copy command failed'));
-            } catch (err) {
-                document.body.removeChild(textarea);
-                reject(err);
-            }
+        // Text
+        const text = document.createElement('p');
+        text.textContent = 'Scan with your Roblox app in Connect > QR Code > Scan button in top right corner';
+        Object.assign(text.style, {
+            marginTop: '16px',
+            fontSize: '14px',
+            lineHeight: '1.4',
+            opacity: '0.8'
+        });
+        modal.appendChild(text);
+
+        overlay.appendChild(modal);
+        document.body.appendChild(overlay);
+
+        // Close on click outside
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) overlay.remove();
         });
     }
 
@@ -136,7 +211,7 @@
 
         const spanText = document.createElement('span');
         spanText.className = 'font-header-2 dynamic-ellipsis-item';
-        spanText.textContent = 'Copy Profile Link';
+        spanText.textContent = 'Profile QR Code';
 
         a.appendChild(divIcon);
         a.appendChild(spanText);
@@ -145,21 +220,21 @@
         a.addEventListener('click', async (ev) => {
             ev.preventDefault();
 
-            let urlToCopy = buildUserProfileUrl(userId, isDeleted);
+            let urlToUse = buildUserProfileUrl(userId, isDeleted);
             const myId = getMyUserId();
 
             // If this is the current user, try to get the special share link
             if (userId && myId && String(userId) === String(myId) && !isDeleted) {
-                showToast('Generating link...');
+                showToast('Generating QR code...');
                 const shareUrl = await fetchShareLink();
                 if (shareUrl) {
-                    urlToCopy = shareUrl;
+                    urlToUse = shareUrl;
                 }
+            } else {
+                showToast('Generating QR code...');
             }
 
-            copyTextToClipboard(urlToCopy)
-                .then(() => showToast('Profile link copied'))
-                .catch(() => showToast('Failed to copy'));
+            showQrModal(urlToUse);
         });
 
         return li;
@@ -231,5 +306,3 @@
     document.head.appendChild(style);
 
 })();
-
-
