@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         RoSeal — Copy Profile Link
-// @namespace    https://github.com/roseal
-// @version      1.2
-// @description  Add a copy button to the profile header to copy the Roblox profile URL (uses RoSeal link format).
+// @name         Trustee
+// @namespace    https://github.com/pomsaddons/Trustee
+// @version      1
+// @description  Add a copy button to the profile header to copy the Roblox profile URL
 // @match        https://www.roblox.com/users/*/profile*
 // @grant        none
 // ==/UserScript==
@@ -231,4 +231,5 @@
     document.head.appendChild(style);
 
 })();
+
 
